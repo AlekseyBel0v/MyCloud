@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.MimeType;
 
+import java.nio.file.Path;
+
 @Data
 @Builder
 @RequiredArgsConstructor
@@ -16,6 +18,8 @@ import org.springframework.util.MimeType;
 public class UserFile {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
+//    @GeneratedValue(strategy = GenerationType.AUTO, generator = "user_file_seq")
+//    @SequenceGenerator(name = "user_file_seq", sequenceName = "user_files_id_seq")
     private long ID;
 
     @Column(nullable = false, length = 255)
@@ -25,7 +29,7 @@ public class UserFile {
     private String fileHash;
 
     @ManyToOne
-    @JoinColumn(nullable = false)
+    @JoinColumn(nullable = false, referencedColumnName = "name")
     private User user;
 
     @Column(columnDefinition = "boolean default false")

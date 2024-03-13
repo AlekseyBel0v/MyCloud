@@ -16,16 +16,12 @@ public class MyCloudApplication implements CommandLineRunner {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
-
     public static void main(String[] args) {
         SpringApplication.run(MyCloudApplication.class, args);
     }
 
     @Override
     public void run(String... args) throws Exception {
-//        jdbcTemplate.execute("create schema my_cloud");
-        userRepository.save(User.builder().name("Alex").path("src/main/resources/static").build());
+        userRepository.save(User.builder().name("Alex").path("src/main/resources/static/alex").build());
     }
 }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--источник информации, по которой выполнена работа:
+https://struchkov.dev/blog/ru/get-started-liquibase/#как-работает-liquibase-->
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.6.xsd">
+
+    <!--    Здесь будут ссылки на другие changeLog файлы-->
+    <!--    Проще всего воспринимать тег include, как место, куда будет вставлено все содержимое того файла, который мы
+    подключаем. relativeToChangelogFile="true" позволяет указывать путь относительно той папки, в которой располагается
+    текущий changeLog-->
+    <include file="v.1.0.0/changelog.xml" relativeToChangelogFile="true"/>
+
+</databaseChangeLog>
