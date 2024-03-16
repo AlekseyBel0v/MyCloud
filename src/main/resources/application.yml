@@ -1,3 +1,5 @@
+file_root_for_macOS: '/Users/aleksej/Desktop/MyCloud'
+
 server:
   port: 8080
   servlet:

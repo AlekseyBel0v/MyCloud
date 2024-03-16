@@ -1,4 +1,4 @@
-package com.belov.mycloud.domain;
+package com.belov.mycloud.model.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

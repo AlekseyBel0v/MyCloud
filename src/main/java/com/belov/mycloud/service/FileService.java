@@ -1,36 +1,28 @@
 package com.belov.mycloud.service;
 
-import com.belov.mycloud.domain.User;
-import com.belov.mycloud.domain.UserFile;
+import com.belov.mycloud.model.front.FileDescription;
+import com.belov.mycloud.model.entity.User;
+import com.belov.mycloud.model.entity.UserFile;
 import com.belov.mycloud.exception.CustomException;
 import com.belov.mycloud.repository.FileRepository;
 import com.belov.mycloud.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
-import org.glassfish.jersey.media.multipart.FormDataMultiPart;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.util.MultiValueMapAdapter;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.DigestInputStream;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -52,31 +44,73 @@ public class FileService {
 
     private final UserRepository userRepository;
 
-    private final HashService hasher;
-
-    //Метод saveFile сохраняет файл на диске, если файла с таким именем не существует
     @Transactional
-    public void saveFile(int idOperation, String userName, String fileName, String hash, MultipartFile file) throws CustomException {
+    public void editFileName(int idOperation, String userName, String editedFileName, String newFileName) throws CustomException {
+        //проверим, существует ли пользователь с именем fileName
+        User user = userRepository.findByName(userName);    //todo: заменить на проверку токена
+        try {
+            Optional<UserFile> fileFromRepo = fileRepository.findByNameAndDeletedFalseAndUserName(editedFileName, userName);
+            if (fileFromRepo.isEmpty()) {
+                throw new CustomException(String.format("Ошибка: файл с именем %s не найден", editedFileName), idOperation, HttpStatus.BAD_REQUEST);
+            }
+            UserFile file = fileFromRepo.get();
+            // переименовывание файла на диске
+            Path path = getFilePath(file);    // путь к файлу на диске со старым именем
+            Path deletedFile = Path.of(path.getParent().toString(), newFileName);    // путь к файлу на диске с новым именем
+            if (!Files.isWritable(path)) {  //проверка доступа к файлу на диске
+                //todo: в зависимости от того, кто блокирует файл, статус ошибки будет иметь код 400 или 500. Для упрощения принято 400.
+                throw new CustomException("This file is not available for delete. Try later", idOperation, HttpStatus.BAD_REQUEST);
+            }
+            Files.move(path, deletedFile, StandardCopyOption.REPLACE_EXISTING);
+            file.setName(newFileName);  //переименовываем файл в репозитории
+        } catch (CustomException ce) {
+            throw ce;
+        } catch (Exception e) {
+            throw new CustomException("Error upload file", idOperation, HttpStatus.INTERNAL_SERVER_ERROR, e);
+        }
+    }
+
+    @Transactional
+    public List<FileDescription> getFileList(int idOperation, String userName) throws CustomException {
+        //проверим, существует ли пользователь с именем fileName
+        User user = userRepository.findByName(userName);    //todo: заменить на проверку токена
+        try {
+            List<UserFile> fileList = fileRepository.findAllByUserNameAndDeletedFalseOrderByName(userName);
+            //todo: проверить, какой будет ли равен список null, если файлов нет
+            return fileList.stream().map(x -> new FileDescription(x.getName(), x.getFileSize())).toList();
+        } catch (Exception e) {
+            throw new CustomException("Error of getting file list", idOperation, HttpStatus.INTERNAL_SERVER_ERROR, e);
+        }
+    }
+
+
+    @Transactional
+    public void saveFile(int idOperation, String userName, String fileName, String hash, MultipartFile file) throws CustomException, IOException, NoSuchAlgorithmException {
+        //Метод saveFile сохраняет файл на диске, если файла с таким именем не существует
+//        if (file.isEmpty()){
+//            throw new CustomException("Файл отсутствует. Необходимо добавить файл.", idOperation, HttpStatus.BAD_REQUEST);
+//        }
         //проверим, существует ли пользователь с именем fileName
         User user = userRepository.findByName(userName);    //todo: заменить на проверку токена
         try {
             Optional<UserFile> fileFromRepo = fileRepository.findByNameAndDeletedFalseAndUserName(fileName, userName);
             if (fileFromRepo.isEmpty()) {
                 //запись файла на диск
-                Path fileFromDisk = get(user.getPath(), fileName);
-                file.transferTo(fileFromDisk);
+                Path fileFromDisk = Paths.get(user.getPath(), fileName);
+                fileFromDisk.toFile().createNewFile();
+                file.transferTo(fileFromDisk.toFile());
                 if (!HashService.checkHash(fileFromDisk, hash)) {  //проверка hash
                     throw new CustomException("Error save file. Try again.", idOperation, HttpStatus.CONFLICT);
                 }
                 //сохраняю информацию о файле в базе
-                fileRepository.save(UserFile.builder().user(user).fileHash(hash).name(fileName).build());
+                fileRepository.save(UserFile.builder().user(user).fileHash(hash).name(fileName).fileSize(file.getSize()).build());
             } else {
                 throw new CustomException(String.format("A file with name %s already exists. Change the file name and try again", fileName), idOperation, HttpStatus.BAD_REQUEST);
             }
         } catch (CustomException ce) {
             throw ce;
         } catch (Exception e) {
-            throw new CustomException("Error save file", idOperation, HttpStatus.INTERNAL_SERVER_ERROR);
+            throw new CustomException("Error save file", idOperation, HttpStatus.INTERNAL_SERVER_ERROR, e);
         }
     }
 
@@ -139,4 +173,22 @@ public class FileService {
     private Path getFilePath(@NotNull UserFile userFile) {
         return Path.of(userFile.getUser().getPath(), userFile.getName());
     }
+
+    //    //Предполагалось, что этот метод выводит список файлов частями по limit штук за раз
+//    @Transactional
+//    public List<FileDescription> getFileList(int idOperation, String userName, int limit) throws CustomException {
+//        //проверим, существует ли пользователь с именем fileName
+//        User user = userRepository.findByName(userName);    //todo: заменить на проверку токена
+//        try {
+//            Page<UserFile> pages = fileRepository.findAllByUserNameAndDeletedFalseOrderByName(userName, PageRequest.of(0, limit));
+//            pages.
+//            //todo: проверить, какой будет ли равен список null, если файлов нет
+//
+//        } catch (CustomException ce) {
+//            throw ce;
+//        } catch (Exception e) {
+//            throw new CustomException("Error getting file list", idOperation, HttpStatus.INTERNAL_SERVER_ERROR, e);
+//        }
+//        return new ArrayList<>();
+//    }
 }

@@ -1,4 +1,4 @@
-package com.belov.mycloud.domain;
+package com.belov.mycloud.model.front;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -1,6 +1,6 @@
 package com.belov.mycloud.controller;
 
-import com.belov.mycloud.domain.Error;
+import com.belov.mycloud.model.front.Error;
 import com.belov.mycloud.exception.CustomException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

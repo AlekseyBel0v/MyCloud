@@ -1,13 +1,10 @@
-package com.belov.mycloud.domain;
+package com.belov.mycloud.model.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
-import org.springframework.util.MimeType;
-
-import java.nio.file.Path;
 
 @Data
 @Builder
@@ -34,4 +31,7 @@ public class UserFile {
 
     @Column(columnDefinition = "boolean default false")
     private boolean deleted;
+
+    @Column(nullable = false)
+    private long fileSize;
 }

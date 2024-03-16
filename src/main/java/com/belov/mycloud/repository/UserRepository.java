@@ -1,7 +1,6 @@
 package com.belov.mycloud.repository;
 
-import com.belov.mycloud.domain.User;
-import org.springframework.context.annotation.ComponentScans;
+import com.belov.mycloud.model.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
